@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import scipy.cluster
 
+NUM_CLUSTERS = 5
 
 def fcm(data):
     ## initialization
@@ -69,7 +70,7 @@ def fcm(data):
     print("c", c)
 
     clusters = label_data(data, coeffs)
-    plot_data(data, c)
+    plot_data(data, clusters, c)
 
 
 
@@ -79,35 +80,21 @@ def fcm(data):
     cluster assignment = max weight/coeff for data i: which class?
     '''
 def label_data(data, coeffs):
-    clusters = np.zeros(len(data))
-    #for i in range(len(clusters)):
-    for i in range(10):
-        print(coeffs[i])
-        clusters[i] = np.argmax(coeffs[i])
-        print(clusters[i])
+    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+    for i in range(len(data)):
+        clusters[np.argmax(coeffs[i])][i] = (data[i])
+
     return clusters
 
 
 
 #plot
-def plot_data(data, centroids):
-    #plt.plot
-    xs = data[:, 0]
-    ys = data[:, 1]
-
-    
-    assignments = scipy.cluster.vq.vq(data, centroids)[0]
-    clusters = [[] for i in range( len( assignments ) )]
-    for item, clustNum in zip( data, assignments ):
-        clusters[clustNum].append( item )
-
-
+def plot_data(data, clusters, centroids):
     colors = list("bgrcmyk")
-    #num_clusters = max(clusters)
 
-    for i in range(len(clusters)):
-        color = colors[random.randint(0, len(colors))]
-        plt.scatter(clusters[i][:][0], clusters[i][:][0], color=color)
+    for i in range(NUM_CLUSTERS):
+        color = colors[random.randint(0, len(colors)-1)]
+        plt.scatter(clusters[i][:, 0], clusters[i][:, 1], color=color)
 
     plt.show()
 
