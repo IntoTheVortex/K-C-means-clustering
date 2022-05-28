@@ -1,12 +1,13 @@
 import sys
 import os.path
-import random
 import numpy as np
 from matplotlib import pyplot as plt
-import scipy.cluster
 
-NUM_CLUSTERS = 7
+NUM_CLUSTERS = 2
+LIMIT = 200
+INTERVAL = 10
 
+#TODO sum of squares error
 def fcm(data):
     ## initialization
 
@@ -24,9 +25,12 @@ def fcm(data):
     c = np.random.uniform(min, max, [k, 2])
 
 
-    r = 10
+    counter = 0
+    prev_clusters = np.ones((NUM_CLUSTERS, len(data), 2))
+    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+
     ## main loop
-    for _ in range(r):
+    while not np.array_equal(prev_clusters, clusters):
         #compute coefficients/membership grades/weights
         for j in range(k): #j is a cluster
             # euc dist = sqrt((x1-x2)^2 + (y1-y2)^2)
@@ -48,8 +52,13 @@ def fcm(data):
 
             coeffs[:, j] = 1 / np.power(totals, (2 / (m - 1)))
 
+        clusters = label_data_cmeans(data, coeffs)
+
+        if counter%INTERVAL == 0:
+            plot_data(clusters, c, counter, 'c-means')
+
         for i in range(k):
-        #compute centroids
+        #recompute centroids
             # fuzzed weights
             coeff_fuzz = np.power(coeffs[:, i], m)
 
@@ -60,9 +69,10 @@ def fcm(data):
             data_y = np.multiply(coeff_fuzz, data[:, 1])
             c[i][1] = np.sum(data_y) / np.sum(coeff_fuzz)
 
-        clusters = label_data_cmeans(data, coeffs)
-        plot_data(clusters, c, _, 'c-means')
-
+        counter += 1
+        if counter > LIMIT:
+            print("limit reached")
+            break
 
 
 
@@ -73,14 +83,73 @@ def label_data_cmeans(data, coeffs):
 
     return clusters
 
-def label_data_kmeans(data, centroids):
-    pass
+
+
+#TODO sum of squares error
+def kmeans(data):
+     #number of clusters
+    k = NUM_CLUSTERS 
+
+    #init centroids
+    max = np.max(data)
+    min = np.min(data)
+    c = np.random.uniform(min, max, [k, 2])
+
+    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+
+
+    ## main loop
+    counter = 0
+    prev_clusters = np.ones((NUM_CLUSTERS, len(data), 2))
+    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+
+    ## main loop
+    while not np.array_equal(prev_clusters, clusters):
+        #compute distances
+        distances = np.zeros((len(data), k))
+        for j in range(k): #j is a cluster
+            # euc dist = sqrt((x1-x2)^2 + (y1-y2)^2)
+            distances[:, j] = np.sqrt(
+                np.power(
+                    np.subtract(data[:, 0], c[j][0]), 2) 
+                + np.power(
+                    np.subtract(data[:, 1], c[j][1]), 2)
+            )
+
+        #assign by least distance
+        clustered_data = np.zeros((NUM_CLUSTERS, len(data), 2))
+        for i in range(len(data)):
+            clustered_data[np.argmin(distances[i])][i] = data[i]
+
+        #print(clustered_data)
+        if counter%INTERVAL == 0:
+            plot_data(clustered_data, c, counter, 'k-means')
+
+
+
+        for i in range(k):
+        #re-compute centroids
+            c[i][0] = np.sum(clustered_data[i][:, 0]) / (np.count_nonzero(clustered_data[i], axis=0))[0]
+            #print(clustered_data[i][:,0])
+            c[i][1] = np.sum(clustered_data[i][:, 1]) / (np.count_nonzero(clustered_data[i], axis=0))[1]
+
+        counter += 1
+        if counter > LIMIT:
+            print("limit reached")
+            break
+
+
+
 
 
 
 #plot
 def plot_data(clusters, centroids, r, filename):
-    colors = list("gbcmky")
+    plt.figure()
+    colors = list("gbcmy")
+    colors = ['mediumblue', 'slateblue', 'rebeccapurple', 'indigo', 
+                 'darkviolet', 'cornflowerblue', 'aqua'
+                 ]
 
     for i in range(NUM_CLUSTERS):
         color = colors[i%len(colors)]
@@ -89,7 +158,8 @@ def plot_data(clusters, centroids, r, filename):
     plt.scatter(centroids[:, 0], centroids[:, 1], color='r')
 
     plt.savefig(filename + str(r) + '.png')
-    plt.show()
+    #plt.show()
+    plt.close()
 
 
 
@@ -124,6 +194,7 @@ def main():
 
     data = read_in_data(datafile)
     fcm(data)
+    kmeans(data)
 
 
 
