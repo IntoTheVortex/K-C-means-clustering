@@ -1,20 +1,21 @@
+from operator import attrgetter
 import sys
 import os.path
 import numpy as np
 from matplotlib import pyplot as plt
 
-NUM_CLUSTERS = 5
-LIMIT = 200
-INTERVAL = 10
+LIMIT = 100
+INTERVAL = 1
+MAX = pow(2, 31) - 1
 
-#TODO sum of squares error - minimize within cluster sum of squares
-def fcm(data):
+def fcm(data, k):
     ## initialization
 
     #fuzzifier
     m = 2
-    #number of clusters
-    k = NUM_CLUSTERS 
+    #for finding best solution
+    best_wcss = MAX
+
 
     #initial coefficients/membership grades
     coeffs = np.zeros((len(data), k))
@@ -28,6 +29,7 @@ def fcm(data):
     counter = 0
     prev_clusters = np.ones((NUM_CLUSTERS, len(data), 2))
     clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+    best_solution = None
 
     ## main loop
     while not np.array_equal(prev_clusters, clusters):
@@ -57,7 +59,11 @@ def fcm(data):
         clusters = label_data_cmeans(data, coeffs)
 
         wcss = calculate_wcss(clusters, c)
-        plot_data(clusters, c, counter, 'c-means', wcss)
+        if wcss < best_wcss:
+            best_wcss = wcss
+            best_solution = Solution(clusters, c, counter, 'c-means-best', wcss)
+        if counter%INTERVAL == 0:
+            plot_data(clusters, c, counter, 'c-means', wcss)
 
         for i in range(k):
         #recompute centroids
@@ -75,7 +81,10 @@ def fcm(data):
         if counter > LIMIT:
             print("limit reached")
             plot_data(clusters, c, counter, 'c-means', wcss)
-            break
+            return best_solution
+
+        if np.array_equal(prev_clusters, clusters):
+            return best_solution
 
 
 
@@ -106,9 +115,9 @@ def calculate_wcss(clusters, centroids):
 
 
 
-def kmeans(data):
-     #number of clusters
-    k = NUM_CLUSTERS 
+def kmeans(data, k):
+    #for finding best solution
+    best_wcss = MAX
 
     #init centroids
     max = np.max(data)
@@ -119,6 +128,7 @@ def kmeans(data):
     counter = 0
     prev_clusters = np.ones((NUM_CLUSTERS, len(data), 2))
     clustered_data = np.zeros((NUM_CLUSTERS, len(data), 2))
+    best_solution = None
 
     ## main loop
     while not np.array_equal(prev_clusters, clustered_data):
@@ -141,30 +151,43 @@ def kmeans(data):
             clustered_data[np.argmin(distances[i])][i] = data[i]
 
         wcss = calculate_wcss(clustered_data, c)
-        #if counter%INTERVAL == 0:
-        plot_data(clustered_data, c, counter, 'k-means', wcss)
+        if wcss < best_wcss:
+            best_wcss = wcss
+            best_solution = Solution(clustered_data, c, counter, 'k-means-best', wcss)
+        if counter%INTERVAL == 0:
+            plot_data(clustered_data, c, counter, 'k-means', wcss)
 
 
 
         for i in range(k):
         #re-compute centroids
             c[i][0] = np.sum(clustered_data[i][:, 0]) / (np.count_nonzero(clustered_data[i], axis=0))[0]
-            #print(clustered_data[i][:,0])
             c[i][1] = np.sum(clustered_data[i][:, 1]) / (np.count_nonzero(clustered_data[i], axis=0))[1]
 
         counter += 1
         if counter > LIMIT:
             print("limit reached")
             plot_data(clustered_data, c, counter, 'k-means', wcss)
-            break
+            return best_solution
+
+        if np.array_equal(prev_clusters, clustered_data):
+            return best_solution
 
 
 
+class Solution:
+    def __init__(self, clusters, centroids, number, name, wcss):
+        self.clusters = clusters
+        self.centroids = centroids
+        self.iteration = number
+        self.filename = name
+        self.wcss = wcss
 
-
+    def plot(self):
+        plot_data(self.clusters, self.centroids, self.iteration, self.filename, self.wcss, show=True)
 
 #plot
-def plot_data(clusters, centroids, r, filename, wcss):
+def plot_data(clusters, centroids, r, filename, wcss, show=False):
     plt.figure()
     colors = list("gbcmy")
     colors = ['mediumblue', 'slateblue', 'rebeccapurple', 'indigo', 
@@ -176,13 +199,12 @@ def plot_data(clusters, centroids, r, filename, wcss):
         plt.scatter(clusters[i][:, 0], clusters[i][:, 1], color=color)
 
     plt.scatter(centroids[:, 0], centroids[:, 1], color='r')
-    plt.title("WCSS = " + str(wcss))
+    plt.title("Iter: " + str(r) + ", WCSS = " + str(round(wcss,2)))
 
     plt.savefig(filename + str(r) + '.png')
-    #plt.show()
+    if show:
+        plt.show()
     plt.close()
-
-
 
 
 def read_in_data(file_name):
@@ -214,8 +236,26 @@ def main():
         sys.exit(1)
 
     data = read_in_data(datafile)
-    fcm(data)
-    kmeans(data)
+
+    choice = int(input("choose algorithm, 1 for k-means and 2 for c-means: "))
+    r = int(input("enter r: "))
+    k = int(input("enter k: "))
+    global NUM_CLUSTERS
+    NUM_CLUSTERS = k
+
+    solutions = np.array([])
+
+    if choice == 1:
+        for i in range(r):
+            solutions = np.append(solutions, kmeans(data, k))
+        best = min(solutions, key=attrgetter('wcss'))
+        best.plot()
+
+    elif choice == 2:
+        for i in range(r):
+            solutions = np.append(solutions, fcm(data, k))
+        best = min(solutions, key=attrgetter('wcss'))
+        best.plot()
 
 
 
