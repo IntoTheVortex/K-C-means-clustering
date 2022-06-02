@@ -3,11 +3,11 @@ import os.path
 import numpy as np
 from matplotlib import pyplot as plt
 
-NUM_CLUSTERS = 2
+NUM_CLUSTERS = 5
 LIMIT = 200
 INTERVAL = 10
 
-#TODO sum of squares error
+#TODO sum of squares error - minimize within cluster sum of squares
 def fcm(data):
     ## initialization
 
@@ -54,8 +54,9 @@ def fcm(data):
 
         clusters = label_data_cmeans(data, coeffs)
 
+        wcss = calculate_wcss(numerator)
         if counter%INTERVAL == 0:
-            plot_data(clusters, c, counter, 'c-means')
+            plot_data(clusters, c, counter, 'c-means', wcss)
 
         for i in range(k):
         #recompute centroids
@@ -83,9 +84,18 @@ def label_data_cmeans(data, coeffs):
 
     return clusters
 
+def calculate_wcss(distances):
+    total = 0
+
+    for i in range(len(distances)):
+        total += np.power(distances[i], 2)
+
+    return total
+
 
 
 #TODO sum of squares error
+# issue with wcss calc for only k-means?
 def kmeans(data):
      #number of clusters
     k = NUM_CLUSTERS 
@@ -121,9 +131,10 @@ def kmeans(data):
         for i in range(len(data)):
             clustered_data[np.argmin(distances[i])][i] = data[i]
 
+        wcss = calculate_wcss(distances)
         #print(clustered_data)
         if counter%INTERVAL == 0:
-            plot_data(clustered_data, c, counter, 'k-means')
+            plot_data(clustered_data, c, counter, 'k-means', wcss)
 
 
 
@@ -144,7 +155,7 @@ def kmeans(data):
 
 
 #plot
-def plot_data(clusters, centroids, r, filename):
+def plot_data(clusters, centroids, r, filename, wcss):
     plt.figure()
     colors = list("gbcmy")
     colors = ['mediumblue', 'slateblue', 'rebeccapurple', 'indigo', 
@@ -156,6 +167,7 @@ def plot_data(clusters, centroids, r, filename):
         plt.scatter(clusters[i][:, 0], clusters[i][:, 1], color=color)
 
     plt.scatter(centroids[:, 0], centroids[:, 1], color='r')
+    plt.title("WCSS = " + str(wcss))
 
     plt.savefig(filename + str(r) + '.png')
     #plt.show()
