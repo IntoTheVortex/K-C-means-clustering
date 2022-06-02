@@ -31,6 +31,8 @@ def fcm(data):
 
     ## main loop
     while not np.array_equal(prev_clusters, clusters):
+        prev_clusters = clusters
+
         #compute coefficients/membership grades/weights
         for j in range(k): #j is a cluster
             # euc dist = sqrt((x1-x2)^2 + (y1-y2)^2)
@@ -54,9 +56,8 @@ def fcm(data):
 
         clusters = label_data_cmeans(data, coeffs)
 
-        wcss = calculate_wcss(numerator)
-        if counter%INTERVAL == 0:
-            plot_data(clusters, c, counter, 'c-means', wcss)
+        wcss = calculate_wcss(clusters, c)
+        plot_data(clusters, c, counter, 'c-means', wcss)
 
         for i in range(k):
         #recompute centroids
@@ -73,6 +74,7 @@ def fcm(data):
         counter += 1
         if counter > LIMIT:
             print("limit reached")
+            plot_data(clusters, c, counter, 'c-means', wcss)
             break
 
 
@@ -84,18 +86,26 @@ def label_data_cmeans(data, coeffs):
 
     return clusters
 
-def calculate_wcss(distances):
+def calculate_wcss(clusters, centroids):
     total = 0
 
-    for i in range(len(distances)):
-        total += np.power(distances[i], 2)
+    for i in range(len(clusters)):
+        for j in range(len(clusters[i])):
+            distance = 0
+            if np.all(clusters[i][j]) != 0:
+                x, y = clusters[i][j]
+                distance = np.sqrt(
+                    np.power(
+                        np.subtract(x, centroids[i][0]), 2)
+                    + np.power(
+                        np.subtract(y, centroids[i][1]), 2)
+                )
+            total += np.power(distance, 2)
 
     return total
 
 
 
-#TODO sum of squares error
-# issue with wcss calc for only k-means?
 def kmeans(data):
      #number of clusters
     k = NUM_CLUSTERS 
@@ -105,16 +115,15 @@ def kmeans(data):
     min = np.min(data)
     c = np.random.uniform(min, max, [k, 2])
 
-    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
-
-
     ## main loop
     counter = 0
     prev_clusters = np.ones((NUM_CLUSTERS, len(data), 2))
-    clusters = np.zeros((NUM_CLUSTERS, len(data), 2))
+    clustered_data = np.zeros((NUM_CLUSTERS, len(data), 2))
 
     ## main loop
-    while not np.array_equal(prev_clusters, clusters):
+    while not np.array_equal(prev_clusters, clustered_data):
+        prev_clusters = clustered_data
+
         #compute distances
         distances = np.zeros((len(data), k))
         for j in range(k): #j is a cluster
@@ -131,10 +140,9 @@ def kmeans(data):
         for i in range(len(data)):
             clustered_data[np.argmin(distances[i])][i] = data[i]
 
-        wcss = calculate_wcss(distances)
-        #print(clustered_data)
-        if counter%INTERVAL == 0:
-            plot_data(clustered_data, c, counter, 'k-means', wcss)
+        wcss = calculate_wcss(clustered_data, c)
+        #if counter%INTERVAL == 0:
+        plot_data(clustered_data, c, counter, 'k-means', wcss)
 
 
 
@@ -147,6 +155,7 @@ def kmeans(data):
         counter += 1
         if counter > LIMIT:
             print("limit reached")
+            plot_data(clustered_data, c, counter, 'k-means', wcss)
             break
 
 
